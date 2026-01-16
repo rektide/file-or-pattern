@@ -5,5 +5,5 @@ pub mod exec;
 pub mod guard;
 
 pub use read::ReadContentProcessor;
-// pub use exec::DoExecuteProcessor;
+pub use exec::DoExecuteProcessor;
 // pub use guard::GuardProcessor;

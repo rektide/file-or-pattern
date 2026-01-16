@@ -96,6 +96,12 @@ impl std::fmt::Display for ProcessorError {
     }
 }
 
+impl From<ProcessorError> for String {
+    fn from(err: ProcessorError) -> Self {
+        err.source
+    }
+}
+
 impl std::error::Error for ProcessorError {}
 
 impl ProcessorError {
