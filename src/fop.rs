@@ -51,17 +51,19 @@ pub enum Content {
     Text(String),
 }
 
-/// Placeholder for pattern matcher type.
+/// Pattern matcher type that stores the glob pattern.
 #[derive(Debug, Clone)]
 pub struct Pattern {
-    // Placeholder - will be filled in by glob processor
-    _private: (),
+    /// The glob pattern string
+    pub pattern: String,
 }
 
 impl Pattern {
-    /// Create a new placeholder Pattern.
-    pub fn new() -> Self {
-        Self { _private: () }
+    /// Create a new Pattern from a glob pattern string.
+    pub fn new(pattern: impl Into<String>) -> Self {
+        Self {
+            pattern: pattern.into(),
+        }
     }
 }
 

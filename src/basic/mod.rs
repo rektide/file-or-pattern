@@ -6,4 +6,4 @@ pub mod glob;
 
 pub use parser::ParserProcessor;
 pub use exist::CheckExistProcessor;
-// pub use glob::TinyGlobbyProcessor;
+pub use glob::TinyGlobbyProcessor;

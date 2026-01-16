@@ -1,4 +1,173 @@
 //! TinyGlobbyProcessor implementation.
-//!
-//! Placeholder for TinyGlobbyProcessor.
-//! Will be implemented in fop-basic-proc-glob ticket.
+
+use crate::fop::{Fop, Pattern, ProcessorError};
+use crate::processor::Processor;
+use glob::glob;
+
+/// Processor for expanding glob patterns.
+///
+/// Uses glob crate to expand patterns and add match_results.
+/// Skips FOPs that already have filename set.
+pub struct TinyGlobbyProcessor;
+
+impl TinyGlobbyProcessor {
+    /// Create a new TinyGlobbyProcessor.
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Default for TinyGlobbyProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Processor for TinyGlobbyProcessor {
+    fn process<'a, I>(&self, input: I) -> impl Iterator<Item = Fop> + 'a
+    where
+        I: Iterator<Item = Fop> + 'a,
+    {
+        let name = self.name().to_string();
+        input.flat_map(move |fop| {
+            // Skip if filename already set (don't glob concrete files)
+            if fop.filename.is_some() {
+                return vec![fop].into_iter().collect::<Vec<_>>().into_iter();
+            }
+
+            // Try to expand glob pattern
+            let pattern = fop.file_or_pattern.clone();
+            match glob(&pattern) {
+                Ok(paths) => {
+                    let mut results = Vec::new();
+                    let mut matched = Vec::new();
+
+                    for entry in paths {
+                        match entry {
+                            Ok(path) => {
+                                matched.push(path.clone());
+
+                                let mut new_fop = fop.clone();
+                                new_fop.filename = Some(path);
+                                results.push(new_fop);
+                            }
+                            Err(e) => {
+                                let err = ProcessorError::new(
+                                    name.as_str(),
+                                    format!("Failed to read glob entry: {}", e),
+                                );
+                                let mut error_fop = fop.clone();
+                                error_fop.err = Some(err);
+                                results.push(error_fop);
+                            }
+                        }
+                    }
+
+                    // Add match_results and pattern to all results
+                    if !matched.is_empty() {
+                        for fop in &mut results {
+                            fop.match_results = Some(matched.clone());
+                            fop.pattern = Some(Pattern::new(pattern.clone()));
+                        }
+                    }
+
+                    results.into_iter().collect::<Vec<_>>().into_iter()
+                }
+                Err(e) => {
+                    // Pattern is invalid, pass through with error
+                    let err = ProcessorError::new(name.as_str(), format!("Invalid glob pattern: {}", e));
+                    let mut error_fop = fop;
+                    error_fop.err = Some(err);
+                    vec![error_fop].into_iter().collect::<Vec<_>>().into_iter()
+                }
+            }
+        })
+    }
+
+    fn name(&self) -> &str {
+        "TinyGlobbyProcessor"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::PathBuf;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_tiny_globby_processor() {
+        let processor = TinyGlobbyProcessor::new();
+        assert_eq!(processor.name(), "TinyGlobbyProcessor");
+    }
+
+    #[test]
+    fn test_glob_pattern_expansion() {
+        let dir = tempdir().unwrap();
+        let dir_path = dir.path();
+
+        // Create test files
+        fs::write(dir_path.join("test1.txt"), "content1").unwrap();
+        fs::write(dir_path.join("test2.txt"), "content2").unwrap();
+        fs::write(dir_path.join("other.rs"), "rust").unwrap();
+
+        // Create glob pattern
+        let pattern = dir_path.join("*.txt").to_str().unwrap().to_string();
+
+        let processor = TinyGlobbyProcessor::new();
+        let fop = Fop::new(&pattern);
+
+        let results: Vec<_> = processor.process(vec![fop].into_iter()).collect();
+
+        assert!(results.len() >= 2);
+        // Check that match_results are set
+        assert!(results[0].match_results.is_some());
+        assert!(results[0].pattern.is_some());
+    }
+
+    #[test]
+    fn test_glob_skips_existing_filename() {
+        let processor = TinyGlobbyProcessor::new();
+        let mut fop = Fop::new("*.txt");
+        fop.filename = Some(PathBuf::from("/concrete/path.txt"));
+
+        let results: Vec<_> = processor.process(vec![fop].into_iter()).collect();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].filename.as_ref().unwrap(),
+            &PathBuf::from("/concrete/path.txt")
+        );
+        assert!(results[0].match_results.is_none());
+    }
+
+    #[test]
+    fn test_glob_invalid_pattern() {
+        let processor = TinyGlobbyProcessor::new();
+        let fop = Fop::new("[invalid[.txt");
+
+        let results: Vec<_> = processor.process(vec![fop].into_iter()).collect();
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].err.is_some());
+        assert_eq!(results[0].err.as_ref().unwrap().processor, "TinyGlobbyProcessor");
+    }
+
+    #[test]
+    fn test_glob_no_matches() {
+        let processor = TinyGlobbyProcessor::new();
+        let fop = Fop::new("/nonexistent/path/*.txt");
+
+        let results: Vec<_> = processor.process(vec![fop].into_iter()).collect();
+
+        // Should return empty results (no matches)
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn test_default() {
+        let processor = TinyGlobbyProcessor::default();
+        assert_eq!(processor.name(), "TinyGlobbyProcessor");
+    }
+}

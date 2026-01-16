@@ -9,5 +9,4 @@ pub mod stamper;
 
 pub use fop::{Content, Fop, Pattern, ProcessorError, TimestampInfo};
 pub use processor::{BoundedProcessor, Processor};
-pub use basic::{ParserProcessor, CheckExistProcessor};
-// pub use basic::TinyGlobbyProcessor;
+pub use basic::{ParserProcessor, CheckExistProcessor, TinyGlobbyProcessor};
