@@ -75,7 +75,8 @@ impl Processor for TinyGlobbyProcessor {
                 }
                 Err(e) => {
                     // Pattern is invalid, pass through with error
-                    let err = ProcessorError::new(name.as_str(), format!("Invalid glob pattern: {}", e));
+                    let err =
+                        ProcessorError::new(name.as_str(), format!("Invalid glob pattern: {}", e));
                     let mut error_fop = fop;
                     error_fop.err = Some(err);
                     vec![error_fop].into_iter().collect::<Vec<_>>().into_iter()
@@ -151,7 +152,10 @@ mod tests {
 
         assert_eq!(results.len(), 1);
         assert!(results[0].err.is_some());
-        assert_eq!(results[0].err.as_ref().unwrap().processor, "TinyGlobbyProcessor");
+        assert_eq!(
+            results[0].err.as_ref().unwrap().processor,
+            "TinyGlobbyProcessor"
+        );
     }
 
     #[test]

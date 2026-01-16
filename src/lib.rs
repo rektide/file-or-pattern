@@ -8,7 +8,7 @@ pub mod pipelines;
 pub mod processor;
 pub mod stamper;
 
+pub use basic::{CheckExistProcessor, ParserProcessor, TinyGlobbyProcessor};
+pub use content::{DoExecuteProcessor, GuardProcessor, ReadContentProcessor};
 pub use fop::{Content, Fop, Pattern, ProcessorError, TimestampInfo};
 pub use processor::{BoundedProcessor, Processor};
-pub use basic::{ParserProcessor, CheckExistProcessor, TinyGlobbyProcessor};
-pub use content::{ReadContentProcessor, DoExecuteProcessor, GuardProcessor};

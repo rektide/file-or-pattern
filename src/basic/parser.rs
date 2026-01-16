@@ -65,10 +65,7 @@ impl Processor for ParserProcessor {
 /// This is a convenience function for the common case where you have
 /// user strings and want to create Fop objects from them.
 pub fn parse_strings(strings: impl IntoIterator<Item = impl Into<String>>) -> Vec<Fop> {
-    strings
-        .into_iter()
-        .map(|s| Fop::new(s.into()))
-        .collect()
+    strings.into_iter().map(|s| Fop::new(s.into())).collect()
 }
 
 #[cfg(test)]

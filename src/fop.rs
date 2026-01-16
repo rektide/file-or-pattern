@@ -92,7 +92,11 @@ pub struct ProcessorError {
 
 impl std::fmt::Display for ProcessorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "processor error in '{}': {}", self.processor, self.source)
+        write!(
+            f,
+            "processor error in '{}': {}",
+            self.processor, self.source
+        )
     }
 }
 

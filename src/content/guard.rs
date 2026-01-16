@@ -1,7 +1,6 @@
 //! GuardProcessor implementation.
 
 use crate::fop::Fop;
-use crate::fop::ProcessorError;
 use crate::processor::Processor;
 
 /// Processor that throws if FOP has error.
@@ -75,7 +74,7 @@ mod tests {
         fop1.err = Some(ProcessorError::new("SomeProcessor", "error 1"));
 
         let fop2 = Fop::new("test2.txt");
-        
+
         let results: Vec<_> = processor.process(vec![fop1, fop2].into_iter()).collect();
 
         // First FOP has error, should be filtered out

@@ -1,0 +1,17 @@
+# nextest configuration
+
+# Default profile settings
+[profile.default]
+# Run tests using the number of available CPU hyperthreads
+test-threads = 'num-cpus'
+
+# Default filter - run all tests
+default-filter = 'all()'
+
+# CI profile
+[profile.ci]
+# Use all tests for CI
+default-filter = 'all()'
+
+# Show standard output on failure
+fail-fast = false

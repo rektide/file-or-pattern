@@ -225,7 +225,10 @@ mod tests {
 
         assert_eq!(results.len(), 1);
         assert!(results[0].err.is_some());
-        assert_eq!(results[0].err.as_ref().unwrap().processor, "ReadContentProcessor");
+        assert_eq!(
+            results[0].err.as_ref().unwrap().processor,
+            "ReadContentProcessor"
+        );
     }
 
     #[test]
