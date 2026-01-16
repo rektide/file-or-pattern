@@ -3,8 +3,15 @@ name = "file-or-pattern"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "fop-demo"
+path = "bin/fop-demo.rs"
+
 [dependencies]
 anyhow = "1.0"
 thiserror = "1.0"
+glob = "0.3"
+tokio = { version = "1.0", features = ["full"] }
+itertools = "0.13"
 
 [dev-dependencies]
