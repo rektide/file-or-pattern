@@ -13,6 +13,7 @@ thiserror = "1.0"
 glob = "0.3"
 tokio = { version = "1.0", features = ["full"] }
 itertools = "0.13"
+minstant = "0.1"
 
 [dev-dependencies]
 tempfile = "3.14"
