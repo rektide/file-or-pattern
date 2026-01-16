@@ -11,7 +11,7 @@ pub mod stamper;
 pub use basic::{CheckExistProcessor, ParserProcessor, TinyGlobbyProcessor};
 pub use content::{DoExecuteProcessor, GuardProcessor, ReadContentProcessor};
 pub use fop::{Content, Fop, Pattern, ProcessorError, TimestampInfo};
-pub use processor::{BoundedProcessor, Processor};
+pub use processor::{BoundedProcessor, Processor, SemaphoreBoundedProcessor};
 pub use stamper::{
     DefaultEndSuffixNamer, DefaultStartNamer, EndSuffixNamer, LiteralSuffixNamer,
     PerformanceMeasureStamper, Stamper, StamperHandle, StamperOptions, StartNamer, TrueStamper,
