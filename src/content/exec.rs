@@ -64,7 +64,7 @@ impl Processor for DoExecuteProcessor {
             let path = filename_opt
                 .as_ref()
                 .map(Path::new)
-                .unwrap_or_else(|| Path::new(&file_or_pattern));
+                .unwrap_or_else(|| Path::new(&*file_or_pattern));
 
             if !Self::is_executable(&path) {
                 if expect_execution {

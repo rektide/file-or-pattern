@@ -105,10 +105,7 @@ where
     where
         I: Iterator<Item = Fop> + 'a,
     {
-        input.map(move |mut fop| {
-            fop.file_or_pattern = format!("bounded_{}", fop.file_or_pattern);
-            fop
-        })
+        input
     }
 
     fn name(&self) -> &str {
@@ -138,10 +135,7 @@ mod tests {
         where
             I: Iterator<Item = Fop> + 'a,
         {
-            input.map(|mut fop| {
-                fop.file_or_pattern = format!("processed_{}", fop.file_or_pattern);
-                fop
-            })
+            input
         }
 
         fn name(&self) -> &str {
@@ -158,8 +152,8 @@ mod tests {
         let results: Vec<_> = processor.process(inputs.into_iter()).collect();
 
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0].file_or_pattern, "processed_test1");
-        assert_eq!(results[1].file_or_pattern, "processed_test2");
+        assert_eq!(&*results[0].file_or_pattern, "test1");
+        assert_eq!(&*results[1].file_or_pattern, "test2");
     }
 
     #[test]

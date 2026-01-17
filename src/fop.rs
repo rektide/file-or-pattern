@@ -1,21 +1,25 @@
 //! Core types for the File Or Pattern library.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 /// A flyweight object passed through the pipeline, accumulating fields as it's processed.
+///
+/// Identity fields (file_or_pattern, match_results, pattern) use Arc for cheap cloning
+/// during fan-out operations (e.g., glob expansion).
 #[derive(Debug, Clone)]
 pub struct Fop {
-    /// Original user input
-    pub file_or_pattern: String,
+    /// Original user input - immutable identity, cheap to clone
+    pub file_or_pattern: Arc<str>,
     /// Concrete existing file path
     pub filename: Option<PathBuf>,
     /// Whether filename is executable
     pub executable: Option<bool>,
-    /// Pattern matcher results
-    pub match_results: Option<Vec<PathBuf>>,
-    /// The matcher that detected the match
-    pub pattern: Option<Pattern>,
-    /// Resulting content (bytes or string)
+    /// Pattern matcher results - shared across fan-out
+    pub match_results: Option<Arc<[PathBuf]>>,
+    /// The matcher that detected the match - shared across fan-out
+    pub pattern: Option<Arc<Pattern>>,
+    /// Resulting content (bytes or string) - NOT cloned in fan-out
     pub content: Option<Content>,
     /// File encoding read from
     pub encoding: Option<String>,
@@ -29,7 +33,7 @@ impl Fop {
     /// Create a new Fop with the given file_or_pattern input.
     pub fn new(file_or_pattern: impl Into<String>) -> Self {
         Self {
-            file_or_pattern: file_or_pattern.into(),
+            file_or_pattern: file_or_pattern.into().into(),
             filename: None,
             executable: None,
             match_results: None,
@@ -55,14 +59,14 @@ pub enum Content {
 #[derive(Debug, Clone)]
 pub struct Pattern {
     /// The glob pattern string
-    pub pattern: String,
+    pub pattern: Arc<str>,
 }
 
 impl Pattern {
     /// Create a new Pattern from a glob pattern string.
     pub fn new(pattern: impl Into<String>) -> Self {
         Self {
-            pattern: pattern.into(),
+            pattern: pattern.into().into(),
         }
     }
 }
@@ -125,7 +129,7 @@ mod tests {
     #[test]
     fn test_fop_creation() {
         let fop = Fop::new("test.txt");
-        assert_eq!(fop.file_or_pattern, "test.txt");
+        assert_eq!(&*fop.file_or_pattern, "test.txt");
         assert!(fop.filename.is_none());
         assert!(fop.content.is_none());
     }

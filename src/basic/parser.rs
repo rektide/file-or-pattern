@@ -93,8 +93,8 @@ mod tests {
         let results: Vec<_> = processor.process(fops.into_iter()).collect();
 
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0].file_or_pattern, "test.txt");
-        assert_eq!(results[1].file_or_pattern, "file.rs");
+        assert_eq!(&*results[0].file_or_pattern, "test.txt");
+        assert_eq!(&*results[1].file_or_pattern, "file.rs");
     }
 
     #[test]
@@ -103,9 +103,9 @@ mod tests {
         let fops = parse_strings(strings);
 
         assert_eq!(fops.len(), 3);
-        assert_eq!(fops[0].file_or_pattern, "test.txt");
-        assert_eq!(fops[1].file_or_pattern, "file.rs");
-        assert_eq!(fops[2].file_or_pattern, "data.json");
+        assert_eq!(&*fops[0].file_or_pattern, "test.txt");
+        assert_eq!(&*fops[1].file_or_pattern, "file.rs");
+        assert_eq!(&*fops[2].file_or_pattern, "data.json");
     }
 
     #[test]

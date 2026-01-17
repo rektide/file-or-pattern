@@ -3,6 +3,8 @@
 use crate::fop::{Fop, Pattern, ProcessorError};
 use crate::processor::Processor;
 use glob::glob;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 /// Processor for expanding glob patterns.
 ///
@@ -32,7 +34,7 @@ impl Processor for TinyGlobbyProcessor {
         input.flat_map(move |fop| {
             // Skip if filename already set (don't glob concrete files)
             if fop.filename.is_some() {
-                return vec![fop].into_iter().collect::<Vec<_>>().into_iter();
+                return vec![fop].into_iter();
             }
 
             // Try to expand glob pattern
@@ -63,15 +65,17 @@ impl Processor for TinyGlobbyProcessor {
                         }
                     }
 
-                    // Add match_results and pattern to all results
+                    // Add match_results and pattern to all results using Arc for cheap cloning
                     if !matched.is_empty() {
+                        let matched_arc: Arc<[PathBuf]> = matched.into();
+                        let pattern_arc = Arc::new(Pattern::new(&*pattern));
                         for fop in &mut results {
-                            fop.match_results = Some(matched.clone());
-                            fop.pattern = Some(Pattern::new(pattern.clone()));
+                            fop.match_results = Some(matched_arc.clone());
+                            fop.pattern = Some(pattern_arc.clone());
                         }
                     }
 
-                    results.into_iter().collect::<Vec<_>>().into_iter()
+                    results.into_iter()
                 }
                 Err(e) => {
                     // Pattern is invalid, pass through with error
@@ -79,7 +83,7 @@ impl Processor for TinyGlobbyProcessor {
                         ProcessorError::new(name.as_str(), format!("Invalid glob pattern: {}", e));
                     let mut error_fop = fop;
                     error_fop.err = Some(err);
-                    vec![error_fop].into_iter().collect::<Vec<_>>().into_iter()
+                    vec![error_fop].into_iter()
                 }
             }
         })

@@ -80,7 +80,7 @@ mod tests {
         // First FOP has error, should be filtered out
         // Second FOP passes through
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].file_or_pattern, "test2.txt");
+        assert_eq!(&*results[0].file_or_pattern, "test2.txt");
     }
 
     #[test]

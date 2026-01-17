@@ -30,7 +30,7 @@ impl Processor for CheckExistProcessor {
     {
         input.map(|mut fop| {
             if fop.filename.is_none() {
-                let path = Path::new(&fop.file_or_pattern);
+                let path = Path::new(&*fop.file_or_pattern);
                 if path.exists() {
                     fop.filename = Some(path.to_path_buf());
                 }
