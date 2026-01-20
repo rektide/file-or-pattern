@@ -1,7 +1,7 @@
 //! GuardProcessor implementation.
 
 use crate::fop::Fop;
-use crate::processor::Processor;
+use crate::processor::{AsyncProcessor, Processor};
 
 /// Processor that throws if FOP has error.
 ///
@@ -33,6 +33,20 @@ impl Processor for GuardProcessor {
     }
 }
 
+impl AsyncProcessor for GuardProcessor {
+    fn name(&self) -> &'static str {
+        "GuardProcessor"
+    }
+
+    async fn process_one(&self, fop: Fop) -> Vec<Fop> {
+        if fop.err.is_none() {
+            vec![fop]
+        } else {
+            vec![]
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,7 +56,7 @@ mod tests {
     #[test]
     fn test_guard_processor() {
         let processor = GuardProcessor::new();
-        assert_eq!(processor.name(), "GuardProcessor");
+        assert_eq!(Processor::name(&processor), "GuardProcessor");
     }
 
     #[test]
@@ -86,6 +100,50 @@ mod tests {
     #[test]
     fn test_default() {
         let processor = GuardProcessor::default();
-        assert_eq!(processor.name(), "GuardProcessor");
+        assert_eq!(Processor::name(&processor), "GuardProcessor");
+    }
+
+    #[tokio::test]
+    async fn test_async_guard_processor() {
+        let processor = GuardProcessor::new();
+        assert_eq!(AsyncProcessor::name(&processor), "GuardProcessor");
+    }
+
+    #[tokio::test]
+    async fn test_async_guard_with_no_error() {
+        let processor = GuardProcessor::new();
+        let fop = Fop::new("test.txt");
+
+        let results = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].err.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_async_guard_with_error() {
+        let processor = GuardProcessor::new();
+        let mut fop = Fop::new("test.txt");
+        fop.err = Some(ProcessorError::new("SomeProcessor", "test error"));
+
+        let results = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_async_multiple_with_one_error() {
+        let processor = GuardProcessor::new();
+        let mut fop1 = Fop::new("test1.txt");
+        fop1.err = Some(ProcessorError::new("SomeProcessor", "error 1"));
+
+        let fop2 = Fop::new("test2.txt");
+
+        let results1 = processor.process_one(fop1).await;
+        let results2 = processor.process_one(fop2).await;
+
+        assert_eq!(results1.len(), 0);
+        assert_eq!(results2.len(), 1);
+        assert_eq!(&*results2[0].file_or_pattern, "test2.txt");
     }
 }

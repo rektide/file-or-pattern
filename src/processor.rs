@@ -8,9 +8,14 @@ use tokio::sync::Semaphore;
 
 /// Trait for processors that transform Fop objects.
 ///
+/// # Deprecated
+///
+/// This trait is deprecated. Use `AsyncProcessor` instead.
+///
 /// Processors accept an iterator of Fop objects and return an iterator
 /// of transformed Fop objects. This enables streaming behavior through
 /// the pipeline without blocking on completion.
+#[deprecated(since = "0.1.0", note = "Use AsyncProcessor instead")]
 pub trait Processor: Send + Sync {
     /// Process an iterator of Fop objects and return an iterator of transformed Fop objects.
     ///

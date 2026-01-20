@@ -1,7 +1,7 @@
 //! DoExecuteProcessor implementation.
 
 use crate::fop::{Content, Fop, ProcessorError};
-use crate::processor::Processor;
+use crate::processor::{AsyncProcessor, Processor};
 use std::path::Path;
 use std::process::Command;
 
@@ -47,6 +47,69 @@ impl DoExecuteProcessor {
 impl Default for DoExecuteProcessor {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl AsyncProcessor for DoExecuteProcessor {
+    fn name(&self) -> &'static str {
+        "DoExecuteProcessor"
+    }
+
+    async fn process_one(&self, mut fop: Fop) -> Vec<Fop> {
+        let expect_execution = self.expect_execution;
+
+        let file_or_pattern = fop.file_or_pattern.clone();
+        let filename_opt = fop.filename.take();
+        let path = filename_opt
+            .as_ref()
+            .map(Path::new)
+            .unwrap_or_else(|| Path::new(&*file_or_pattern));
+
+        if !Self::is_executable(&path) {
+            if expect_execution {
+                let err = ProcessorError::new(
+                    "DoExecuteProcessor",
+                    format!("File is not executable: {}", path.display()),
+                );
+                fop.err = Some(err);
+            }
+            return vec![fop];
+        }
+
+        let output = tokio::process::Command::new(&path)
+            .output()
+            .await
+            .map_err(|e| {
+                ProcessorError::new(
+                    "DoExecuteProcessor",
+                    format!("Failed to execute {}: {}", path.display(), e),
+                )
+            });
+
+        match output {
+            Ok(o) if !o.status.success() => {
+                let stderr = String::from_utf8_lossy(&o.stderr);
+                let err = ProcessorError::new(
+                    "DoExecuteProcessor",
+                    format!("Command exited with status {}: {}", o.status, stderr),
+                );
+                fop.err = Some(err);
+                fop.executable = Some(true);
+                vec![fop]
+            }
+            Ok(o) => {
+                let stdout = String::from_utf8_lossy(&o.stdout).to_string();
+                fop.content = Some(Content::Text(stdout));
+                fop.executable = Some(true);
+                vec![fop]
+            }
+            Err(e) => {
+                let err = ProcessorError::new("DoExecuteProcessor", e);
+                fop.err = Some(err);
+                fop.executable = Some(true);
+                vec![fop]
+            }
+        }
     }
 }
 
@@ -123,7 +186,7 @@ mod tests {
     #[test]
     fn test_do_execute_processor() {
         let p = DoExecuteProcessor::new();
-        assert_eq!(p.name(), "DoExecuteProcessor");
+        assert_eq!(Processor::name(&p), "DoExecuteProcessor");
         assert!(!p.expect_execution);
     }
 
@@ -163,6 +226,46 @@ mod tests {
     #[test]
     fn test_default() {
         let p = DoExecuteProcessor::default();
-        assert_eq!(p.name(), "DoExecuteProcessor");
+        assert_eq!(Processor::name(&p), "DoExecuteProcessor");
+    }
+
+    #[tokio::test]
+    async fn test_async_do_execute_processor() {
+        let p = DoExecuteProcessor::new();
+        assert_eq!(AsyncProcessor::name(&p), "DoExecuteProcessor");
+        assert!(!p.expect_execution);
+    }
+
+    #[tokio::test]
+    async fn test_async_expect_execution() {
+        let p = DoExecuteProcessor::new().expect_execution(true);
+        assert!(p.expect_execution);
+    }
+
+    #[tokio::test]
+    async fn test_async_non_executable_file() {
+        let p = DoExecuteProcessor::new();
+        let mut fop = Fop::new("notexec.txt");
+        fop.filename = Some("/some/file.txt".into());
+
+        let results = p.process_one(fop).await;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].executable, None);
+        assert!(results[0].content.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_async_expect_execution_non_executable() {
+        let p = DoExecuteProcessor::new().expect_execution(true);
+        let mut fop = Fop::new("notexec.txt");
+        fop.filename = Some("/some/file.txt".into());
+
+        let results = p.process_one(fop).await;
+        assert_eq!(results.len(), 1);
+        assert!(results[0].err.is_some());
+        assert_eq!(
+            results[0].err.as_ref().unwrap().processor,
+            "DoExecuteProcessor"
+        );
     }
 }
