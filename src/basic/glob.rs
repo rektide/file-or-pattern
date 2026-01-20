@@ -3,12 +3,11 @@
 use crate::fop::{Fop, Pattern, ProcessorError};
 use crate::processor::Processor;
 use glob::glob;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 /// Processor for expanding glob patterns.
 ///
-/// Uses glob crate to expand patterns and add match_results.
+/// Uses glob crate to expand patterns into multiple Fops.
 /// Skips FOPs that already have filename set.
 pub struct TinyGlobbyProcessor;
 
@@ -42,13 +41,10 @@ impl Processor for TinyGlobbyProcessor {
             match glob(&pattern) {
                 Ok(paths) => {
                     let mut results = Vec::new();
-                    let mut matched = Vec::new();
 
                     for entry in paths {
                         match entry {
                             Ok(path) => {
-                                matched.push(path.clone());
-
                                 let mut new_fop = fop.clone();
                                 new_fop.filename = Some(path);
                                 results.push(new_fop);
@@ -65,12 +61,10 @@ impl Processor for TinyGlobbyProcessor {
                         }
                     }
 
-                    // Add match_results and pattern to all results using Arc for cheap cloning
-                    if !matched.is_empty() {
-                        let matched_arc: Arc<[PathBuf]> = matched.into();
+                    // Add pattern to all results using Arc for cheap cloning
+                    if !results.is_empty() {
                         let pattern_arc = Arc::new(Pattern::new(&*pattern));
                         for fop in &mut results {
-                            fop.match_results = Some(matched_arc.clone());
                             fop.pattern = Some(pattern_arc.clone());
                         }
                     }
@@ -126,8 +120,6 @@ mod tests {
         let results: Vec<_> = processor.process(vec![fop].into_iter()).collect();
 
         assert!(results.len() >= 2);
-        // Check that match_results are set
-        assert!(results[0].match_results.is_some());
         assert!(results[0].pattern.is_some());
     }
 
@@ -144,7 +136,6 @@ mod tests {
             results[0].filename.as_ref().unwrap(),
             &PathBuf::from("/concrete/path.txt")
         );
-        assert!(results[0].match_results.is_none());
     }
 
     #[test]

@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 /// A flyweight object passed through the pipeline, accumulating fields as it's processed.
 ///
-/// Identity fields (file_or_pattern, match_results, pattern) use Arc for cheap cloning
+/// Identity fields (file_or_pattern, pattern) use Arc for cheap cloning
 /// during fan-out operations (e.g., glob expansion).
 #[derive(Debug, Clone)]
 pub struct Fop {
@@ -15,8 +15,6 @@ pub struct Fop {
     pub filename: Option<PathBuf>,
     /// Whether filename is executable
     pub executable: Option<bool>,
-    /// Pattern matcher results - shared across fan-out
-    pub match_results: Option<Arc<[PathBuf]>>,
     /// The matcher that detected the match - shared across fan-out
     pub pattern: Option<Arc<Pattern>>,
     /// Resulting content (bytes or string) - NOT cloned in fan-out
@@ -36,7 +34,6 @@ impl Fop {
             file_or_pattern: file_or_pattern.into().into(),
             filename: None,
             executable: None,
-            match_results: None,
             pattern: None,
             content: None,
             encoding: None,
