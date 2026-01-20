@@ -2,6 +2,7 @@
 
 use crate::fop::Fop;
 use crate::stamper::Stamper;
+use std::future::Future;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
@@ -29,6 +30,23 @@ pub trait Processor: Send + Sync {
     ///
     /// This is used for error reporting and debugging.
     fn name(&self) -> &str;
+}
+
+/// Async trait for processors that transform Fop objects.
+///
+/// Processors accept a single Fop and return a Future that yields 0..N Fops.
+/// This enables asynchronous, non-blocking processing with proper tokio integration.
+pub trait AsyncProcessor: Send + Sync {
+    /// Processor name for debugging and error attribution.
+    fn name(&self) -> &'static str;
+
+    /// Process a single Fop, potentially producing multiple outputs.
+    ///
+    /// # Return Semantics
+    /// - Empty Vec: item filtered out (guard rejected, no glob matches)
+    /// - Single item: 1:1 transformation
+    /// - Multiple items: fan-out (glob expansion)
+    fn process_one(&self, fop: Fop) -> impl Future<Output = Vec<Fop>> + Send;
 }
 
 /// Trait for processors that can process items concurrently.

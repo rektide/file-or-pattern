@@ -1,7 +1,7 @@
 //! ReadContentProcessor implementation.
 
 use crate::fop::{Content, Fop, ProcessorError};
-use crate::processor::Processor;
+use crate::processor::{AsyncProcessor, Processor};
 use std::fs;
 use std::io::Read;
 
@@ -58,7 +58,7 @@ impl Processor for ReadContentProcessor {
     {
         let encoding = self.encoding.clone();
         let record_encoding = self.record_encoding;
-        let name = self.name().to_string();
+        let name = Processor::name(self).to_string();
         input.map(move |mut fop| {
             // Only process if filename is set
             if let Some(filename) = &fop.filename {
@@ -119,6 +119,52 @@ impl Processor for ReadContentProcessor {
     }
 }
 
+impl AsyncProcessor for ReadContentProcessor {
+    fn name(&self) -> &'static str {
+        "ReadContentProcessor"
+    }
+
+    async fn process_one(&self, mut fop: Fop) -> Vec<Fop> {
+        let encoding = self.encoding.clone();
+        let record_encoding = self.record_encoding;
+
+        if let Some(filename) = &fop.filename {
+            match tokio::fs::read(filename).await {
+                Ok(bytes) => {
+                    if let Some(enc) = &encoding {
+                        match String::from_utf8(bytes.clone()) {
+                            Ok(text) => {
+                                fop.content = Some(Content::Text(text));
+                                if record_encoding {
+                                    fop.encoding = Some(enc.clone());
+                                }
+                            }
+                            Err(_) => {
+                                fop.content = Some(Content::Bytes(bytes));
+                                if record_encoding {
+                                    fop.encoding = Some("binary".to_string());
+                                }
+                            }
+                        }
+                    } else {
+                        fop.content = Some(Content::Bytes(bytes));
+                        if record_encoding {
+                            fop.encoding = Some("binary".to_string());
+                        }
+                    }
+                }
+                Err(e) => {
+                    fop.err = Some(ProcessorError::new(
+                        "ReadContentProcessor",
+                        format!("Failed to read file {}: {}", filename.display(), e),
+                    ));
+                }
+            }
+        }
+        vec![fop]
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,7 +174,7 @@ mod tests {
     #[test]
     fn test_read_content_processor() {
         let processor = ReadContentProcessor::new();
-        assert_eq!(processor.name(), "ReadContentProcessor");
+        assert_eq!(Processor::name(&processor), "ReadContentProcessor");
         assert_eq!(processor.encoding, Some("utf8".to_string()));
         assert!(!processor.record_encoding);
     }
@@ -234,6 +280,76 @@ mod tests {
     #[test]
     fn test_default() {
         let processor = ReadContentProcessor::default();
-        assert_eq!(processor.name(), "ReadContentProcessor");
+        assert_eq!(Processor::name(&processor), "ReadContentProcessor");
+    }
+
+    #[tokio::test]
+    async fn test_async_read_text_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("test.txt");
+        std::fs::write(&file_path, "Hello, async world!").unwrap();
+
+        let processor = ReadContentProcessor::new();
+        let mut fop = Fop::new(file_path.to_str().unwrap());
+        fop.filename = Some(file_path.clone());
+
+        let results: Vec<_> = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].content.is_some());
+        if let Some(Content::Text(text)) = &results[0].content {
+            assert_eq!(text, "Hello, async world!");
+        } else {
+            panic!("Expected Text content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_async_read_binary_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("test.bin");
+        let binary_data: Vec<u8> = vec![0x00, 0xFF, 0x7F, 0x80, 0x01];
+        std::fs::write(&file_path, &binary_data).unwrap();
+
+        let processor = ReadContentProcessor::new().as_binary();
+        let mut fop = Fop::new(file_path.to_str().unwrap());
+        fop.filename = Some(file_path.clone());
+
+        let results: Vec<_> = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].content.is_some());
+        if let Some(Content::Bytes(data)) = &results[0].content {
+            assert_eq!(data, &binary_data);
+        } else {
+            panic!("Expected Bytes content");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_async_read_no_filename() {
+        let processor = ReadContentProcessor::new();
+        let fop = Fop::new("test.txt");
+
+        let results: Vec<_> = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].content.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_async_read_file_not_found() {
+        let processor = ReadContentProcessor::new();
+        let mut fop = Fop::new("nonexistent.txt");
+        fop.filename = Some("/nonexistent/file.txt".into());
+
+        let results: Vec<_> = processor.process_one(fop).await;
+
+        assert_eq!(results.len(), 1);
+        assert!(results[0].err.is_some());
+        assert_eq!(
+            results[0].err.as_ref().unwrap().processor,
+            "ReadContentProcessor"
+        );
     }
 }
