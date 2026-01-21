@@ -9,7 +9,7 @@ pub mod processor;
 pub mod stamper;
 pub mod stream;
 
-pub use basic::{CheckExistProcessor, ParserProcessor, TinyGlobbyProcessor};
+pub use basic::{CheckExistProcessor, FsstreamProcessor, ParserProcessor, TinyGlobbyProcessor};
 pub use content::{DoExecuteProcessor, GuardProcessor, ReadContentProcessor};
 pub use fop::{Content, Fop, Pattern, ProcessorError, TimestampInfo};
 pub use processor::{AsyncProcessor, BoundedProcessor, Processor, SemaphoreBoundedProcessor};
